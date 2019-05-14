@@ -1,6 +1,6 @@
 # MixHop TensorFlow Implementation
 
-Official Implementation of ICML 2019 Paper: *MixHop: Higher-Order Graph Convolutional Architectures via Sparsified Neighborhood Mixing*
+Official Implementation of ICML 2019 Paper: [*MixHop: Higher-Order Graph Convolutional Architectures via Sparsified Neighborhood Mixing*](https://arxiv.org/abs/1905.00067)
 
 If you find this code useful, please cite us as:
 
@@ -24,7 +24,7 @@ If you find this code useful, please cite us as:
 1. `mixhop_trainer.py`: End-to-end training and evaluation over the
    [planetoid](https://github.com/kimiyoung/planetoid) datasets. You probably
    want to start by invoking/modifying the shell scripts directly
-   (e.g. `run_cora.sh`).
+   (e.g. `train_cora.sh`).
 
 ## How to use `mixhop_trainer.py`
 
