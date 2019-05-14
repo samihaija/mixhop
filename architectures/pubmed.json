@@ -1,0 +1,153 @@
+[
+  {
+    "args": [
+      0.30000000000000004, 
+      988031
+    ], 
+    "fn": "sparse_dropout", 
+    "module": "mixhop_model", 
+    "kwargs": {
+      "pass_is_training": true
+    }
+  }, 
+  {
+    "args": [], 
+    "fn": "sparse_tensor_to_dense", 
+    "module": "tf", 
+    "kwargs": {}
+  }, 
+  {
+    "args": [], 
+    "fn": "l2_normalize", 
+    "module": "tf.nn", 
+    "kwargs": {
+      "axis": 1
+    }
+  }, 
+  {
+    "args": [
+      [
+        0, 
+        1, 
+        2
+      ], 
+      [
+        17, 
+        22, 
+        21
+      ]
+    ], 
+    "fn": "mixhop_layer", 
+    "module": "self", 
+    "kwargs": {
+      "layer_id": 0, 
+      "pass_kernel_regularizer": true
+    }
+  }, 
+  {
+    "args": [], 
+    "fn": "batch_norm", 
+    "module": "tf.contrib.layers", 
+    "kwargs": {}
+  }, 
+  {
+    "args": [], 
+    "fn": "tanh", 
+    "module": "tf.nn", 
+    "kwargs": {}
+  }, 
+  {
+    "args": [
+      0.7
+    ], 
+    "fn": "dropout", 
+    "module": "tf.layers", 
+    "kwargs": {
+      "pass_training": true
+    }
+  }, 
+  {
+    "args": [
+      [
+        0, 
+        1, 
+        2
+      ], 
+      [
+        3, 
+        1, 
+        6
+      ]
+    ], 
+    "fn": "mixhop_layer", 
+    "module": "self", 
+    "kwargs": {
+      "layer_id": 1, 
+      "pass_kernel_regularizer": true
+    }
+  }, 
+  {
+    "args": [
+      0.7
+    ], 
+    "fn": "dropout", 
+    "module": "tf.layers", 
+    "kwargs": {
+      "pass_training": true
+    }
+  }, 
+  {
+    "args": [
+      [
+        0, 
+        1, 
+        2
+      ], 
+      [
+        2, 
+        4, 
+        4
+      ]
+    ], 
+    "fn": "mixhop_layer", 
+    "module": "self", 
+    "kwargs": {
+      "layer_id": 2, 
+      "pass_kernel_regularizer": true
+    }
+  }, 
+  {
+    "args": [], 
+    "fn": "batch_norm", 
+    "module": "tf.contrib.layers", 
+    "kwargs": {}
+  }, 
+  {
+    "args": [], 
+    "fn": "tanh", 
+    "module": "tf.nn", 
+    "kwargs": {}
+  }, 
+  {
+    "args": [
+      0.7
+    ], 
+    "fn": "dropout", 
+    "module": "tf.layers", 
+    "kwargs": {
+      "pass_training": true
+    }
+  }, 
+  {
+    "args": [
+      3
+    ], 
+    "fn": "dense", 
+    "module": "tf.layers", 
+    "kwargs": {
+      "activation": null, 
+      "use_bias": false, 
+      "pass_kernel_regularizer": true
+    }
+  }
+]
