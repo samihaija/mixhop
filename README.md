@@ -52,6 +52,7 @@ bash train_pubmed_2layer_psum.sh  # Model in paper
 # Pubmed fully-connected output layer.
 bash train_pubmed_3layer_fc.sh  # Model not in paper
 ```
+Note: for cora and citeseer, the shell scripts produce results that are a little better than the paper. We discovered these hyper-parameters only recently (after ICML submission ended).
 
 ## Need help?
 
