@@ -24,7 +24,7 @@ If you find this code useful, please cite us as:
 1. `mixhop_trainer.py`: End-to-end training and evaluation over the
    [planetoid](https://github.com/kimiyoung/planetoid) datasets. You probably
    want to start by invoking/modifying the shell scripts directly
-   (e.g. `planetoid.sh`).
+   (e.g. `run_cora.sh`).
 
 ## How to use `mixhop_trainer.py`
 
