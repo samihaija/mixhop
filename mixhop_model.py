@@ -26,7 +26,7 @@ def psum_output_layer(x, num_classes):
   psum = 0
   for i in xrange(num_segments):
     segment = x[:, i*num_classes : (i+1)*num_classes]
-    psum = segment * softmax_q[i] + psum  # ORIGINAL
+    psum = segment * softmax_q[i] + psum
   return psum
 
 

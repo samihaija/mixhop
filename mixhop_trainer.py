@@ -1,7 +1,9 @@
 
 # Standard imports.
 import collections
+import json
 import os
+import pickle
 
 # Third-party imports.
 from absl import app
@@ -50,7 +52,6 @@ flags.DEFINE_string('hidden_dims_csv', '60',
 flags.DEFINE_string('output_layer', 'wsum',
                     'One of: "wsum" (weighted sum) or "fc" (fully-connected).')
 flags.DEFINE_string('nonlinearity', 'relu', '')
-flags.DEFINE_integer('num_train_steps', 1000, 'Number of training steps.')
 flags.DEFINE_string('adj_pows', '1',
                     'Comma-separated list of Adjacency powers. Setting to "1" '
                     'recovers valinna GCN. Setting to "0,1,2" uses '
@@ -64,6 +65,7 @@ flags.DEFINE_string('adj_pows', '1',
                     'necessary.')
 
 # Training Flags.
+flags.DEFINE_integer('num_train_steps', 400, 'Number of training steps.')
 flags.DEFINE_integer('early_stop_steps', 50, 'If the validation accuracy does '
                      'not increase for this many steps, training is halted.')
 flags.DEFINE_float('l2reg', 5e-4, 'L2 Regularization on Kernels.')
@@ -118,7 +120,7 @@ class AccuracyMonitor(object):
     self.params_at_best = None 
 
   def mark_accuracy(self, validate_accuracy, test_accuracy, i):
-    curr_accuracy = (validate_accuracy, test_accuracy, i)
+    curr_accuracy = (float(validate_accuracy), float(test_accuracy), i)
     self.curr_accuracy = curr_accuracy
     if curr_accuracy > self.best:
       self.best = curr_accuracy
@@ -161,6 +163,12 @@ class AdjacencyPowersParser(object):
 
   def powers(self):
     return self._powers
+
+  def output_capacity(self, num_classes):
+    if all([len(s) == 1 and s[0] == 1 for s in self._ratios]):
+      return num_classes * len(self._powers)
+    else:
+      return sum([s[-1] for s in self._ratios])
 
   def divide_capacity(self, layer_index, total_dim):
     sizes = [l[min(layer_index, len(l)-1)] for l in self._ratios]
@@ -206,8 +214,27 @@ def main(unused_argv):
   if FLAGS.architecture:
     model.load_architecture_from_file(FLAGS.architecture)
   else:
-    pass
-    # TODO(haija): Build default model following new architecture class
+    model.add_layer('mixhop_model', 'sparse_dropout', FLAGS.input_dropout,
+                    num_x_entries, pass_is_training=True)
+    model.add_layer('tf', 'sparse_tensor_to_dense')
+    model.add_layer('tf.nn', 'l2_normalize', axis=1)
+   
+    power_parser = AdjacencyPowersParser()
+    layer_dims = map(int, FLAGS.hidden_dims_csv.split(','))
+    layer_dims.append(power_parser.output_capacity(dataset.ally.shape[1]))
+    for j, dim in enumerate(layer_dims):
+      if j != 0:
+        model.add_layer('tf.layers', 'dropout', FLAGS.layer_dropout,
+                        pass_training=True)
+      capacities = power_parser.divide_capacity(j, dim)
+      model.add_layer('self', 'mixhop_layer', power_parser.powers(), capacities,
+                      layer_id=j, pass_kernel_regularizer=True)
+
+      if j != len(layer_dims) - 1:
+        model.add_layer('tf.contrib.layers', 'batch_norm')
+        model.add_layer('tf.nn', FLAGS.nonlinearity)
+    #
+    model.add_layer('mixhop_model', 'psum_output_layer', dataset.ally.shape[1])
   net = model.activations[-1]
 
   ### TRAINING.
@@ -303,15 +330,19 @@ def main(unused_argv):
 
   if not os.path.exists(FLAGS.results_dir):
     os.makedirs(FLAGS.results_dir)
+  if not os.path.exists(FLAGS.train_dir):
+    os.makedirs(FLAGS.train_dir)
   with open(output_results_file, 'w') as fout:
     results = {
         'at_best_validate': accuracy_monitor.best,
-        'current': curr_accuracy,
+        'current': accuracy_monitor.curr_accuracy,
     }
     fout.write(json.dumps(results))
 
   with open(output_model_file, 'wb') as fout:
     pickle.dump(accuracy_monitor.params_at_best, fout)
+  print('Wrote model to ' + output_model_file)
+  print('Wrote results to ' + output_results_file)
 
 
 if __name__ == '__main__':
