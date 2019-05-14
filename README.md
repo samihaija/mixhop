@@ -46,7 +46,7 @@ bash train_pubmed.sh
 ## Need help?
 
 Please help us by reaching out to sami@haija.org -- Whenever possible, we would
-like to improve the quality of the code and any resolve ambiguities.
+like to improve the quality of the code and resolve any ambiguities.
 
 ## To be completed!
 
