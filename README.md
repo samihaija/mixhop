@@ -40,7 +40,17 @@ mkdir -p ~/data && cd ~/data && ls planetoid || git clone git@github.com:kimiyou
 Then, we advise you to run the shell script which have good hyper-parameter values:
 
 ```
-bash train_pubmed.sh
+# Cora:
+bash train_cora.sh  # Model in paper
+
+# Citeseer:
+bash train_citeseer.sh  # Model in paper
+
+# Pubmed
+bash train_pubmed_2layer_psum.sh  # Model in paper
+
+# Pubmed fully-connected output layer.
+bash train_pubmed_3layer_fc.sh  # Model not in paper
 ```
 
 ## Need help?
@@ -51,8 +61,8 @@ like to improve the quality of the code and resolve any ambiguities.
 ## To be completed!
 
 This code provides the complete MixHop Graph Conv Layer and Architecture,
-however, it is still missing (1) Cora + Citeseer run scripts and (2) The
-two-phase training. Reason for delay: Our original code is _researchy_ i.e.
+however, it is still missing the Group-lasso regularization.
+Reason for delay: Our original code is _researchy_ i.e.
 not pleasant to read [you know how it goes: you try a bunch of things, until
 something works, without removing the things that did not work, producing one
 huge file].
