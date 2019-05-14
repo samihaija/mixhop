@@ -201,9 +201,10 @@ def main(unused_argv):
   kernel_regularizer = keras_regularizers.l2(FLAGS.l2reg)
   
   ### BUILD MODEL
-  model = mixhop_model.MixHopModel()
+  model = mixhop_model.MixHopModel(
+      sparse_adj, x, is_training, kernel_regularizer)
   if FLAGS.architecture:
-    model.load_architecture_from_file('pubmed.json')
+    model.load_architecture_from_file(FLAGS.architecture)
   else:
     pass
     # TODO(haija): Build default model following new architecture class
@@ -231,7 +232,7 @@ def main(unused_argv):
   sess = tf.Session()
   sess.run(tf.global_variables_initializer())
  
-  ### TRAINING LOOP
+  ### PREPARE FOR TRAINING
   # Get indices of {train, validate, test} nodes.
   num_train_nodes = None
   if FLAGS.num_train_nodes > 0:
@@ -247,6 +248,10 @@ def main(unused_argv):
   dataset.populate_feed_dict(feed_dict)
   LAST_STEP = collections.Counter()
   accuracy_monitor = AccuracyMonitor(sess, FLAGS.early_stop_steps)
+
+  # Step function makes a single update, prints accuracies, and invokes
+  # accuracy_monitor to keep track of test accuracy and parameters @ best
+  # validation accuracy
   def step(lr=None, columns=None):
     if lr is not None:
       feed_dict[learn_rate] = lr
@@ -284,7 +289,7 @@ def main(unused_argv):
       print('Early stopping')
       return False
 
-  # Do --num_train_steps
+  ### TRAINING LOOP
   lr = FLAGS.learn_rate
   lr_decrement = FLAGS.lr_decrement_ratio_of_initial * FLAGS.learn_rate
   for i in xrange(FLAGS.num_train_steps):

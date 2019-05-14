@@ -37,7 +37,7 @@ that [planetoid](https://github.com/kimiyoung/planetoid) repo is cloned on
 mkdir -p ~/data && cd ~/data && ls planetoid || git clone git@github.com:kimiyoung/planetoid.git
 ```
 
-Then, we advice you to run the shell script which have good hyper-parameter values:
+Then, we advise you to run the shell script which have good hyper-parameter values:
 
 ```
 bash train_pubmed.sh

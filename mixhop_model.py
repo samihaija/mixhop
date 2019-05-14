@@ -118,7 +118,7 @@ class MixHopModel(object):
       raise ValueError('Model is (partially) initialized. Cannot load.')
     layer_defs = json.loads(open(filename).read())
     for layer_def in layer_defs:
-      self.add_layer(layer_def['module'], layer_def['fn'], *layer_def['args']
+      self.add_layer(layer_def['module'], layer_def['fn'], *layer_def['args'],
                      **layer_def['kwargs'])
 
   def add_layer(self, module_name, layer_fn_name, *args, **kwargs):
