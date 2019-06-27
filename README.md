@@ -1,16 +1,27 @@
 # MixHop TensorFlow Implementation
 
-Official Implementation of ICML 2019 Paper: [*MixHop: Higher-Order Graph Convolutional Architectures via Sparsified Neighborhood Mixing*](https://arxiv.org/abs/1905.00067)
+Official Implementation of ICML 2019 Paper: [*MixHop: Higher-Order Graph Convolutional Architectures via Sparsified Neighborhood Mixing*](https://arxiv.org/abs/1905.00067) and UAI 2019 Paper: [*N-GCN: Multi-scale Graph Convolutionfor Semi-supervised Node Classification*](https://arxiv.org/abs/1802.08888)
 
 If you find this code useful, please cite us as:
 
     @inproceedings{mixhop,
      author={Sami Abu-El-Haija AND Bryan Perozzi AND Amol Kapoor AND Hrayr Harutyunyan
-             AND Nazanin Alipourfard AND Kristina Lerman AND Greg Ver Steeg AND Aram Galstyan}
+             AND Nazanin Alipourfard AND Kristina Lerman AND Greg Ver Steeg AND Aram Galstyan},
      title={MixHop: Higher-Order Graph Convolution Architectures via Sparsified Neighborhood Mixing},
      booktitle = {International Conference on Machine Learning (ICML)},
      year = {2019},
     }
+
+If you made use of the files `train_*_ngcn.sh` or `ngcn_trainer.py`, then you
+may alternatively cite us as: 
+
+    @inproceedings{ngcn,
+     author={Sami Abu-El-Haija AND Bryan Perozzi AND Amol Kapoor AND Joonseok Lee},
+     title={N-GCN: Multi-scale Graph Convolutionfor Semi-supervised Node Classification},
+     booktitle = {Conference on Uncertainty in Artificial Intelligence (UAI)},
+     year = {2019},
+    }
+
 
 ## File Overview
 
@@ -25,6 +36,8 @@ If you find this code useful, please cite us as:
    [planetoid](https://github.com/kimiyoung/planetoid) datasets. You probably
    want to start by invoking/modifying the shell scripts directly
    (e.g. `train_cora.sh`).
+1. `ngcn_trainer.py`: Same as above, but trains the NGCN model. It utilizes the
+   files above, as NGCN can be treated as a special-case of MixHop.
 
 ## How to use `mixhop_trainer.py`
 
@@ -40,6 +53,7 @@ mkdir -p ~/data && cd ~/data && ls planetoid || git clone git@github.com:kimiyou
 Then, we advise you to run the shell script which have good hyper-parameter values:
 
 ```
+### MixHop (ICML'19) training scripts
 # Cora:
 bash train_cora.sh  # Model in paper
 
@@ -51,6 +65,16 @@ bash train_pubmed_2layer_psum.sh  # Model in paper
 
 # Pubmed fully-connected output layer.
 bash train_pubmed_3layer_fc.sh  # Model not in paper
+
+### NGCN (UAI'19) training scripts
+# Cora:
+bash train_cora_ngcn.sh
+
+# Citeseer:
+bash train_citeseer_ngcn.sh
+
+# Pubmed:
+bash train_pubmed_ngcn.sh
 ```
 Note: for cora and citeseer, the shell scripts produce results that are a little better than the paper. We discovered these hyper-parameters only recently (after ICML submission ended).
 

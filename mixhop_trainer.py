@@ -160,7 +160,7 @@ class AdjacencyPowersParser(object):
       components = p.split(':')
       self._powers.append(int(components[0]))
       if has_colon:
-        self._ratios.append(map(float, components[1:]))
+        self._ratios.append(list(map(float, components[1:])))
       else:
         self._ratios.append([1])
 
@@ -259,7 +259,7 @@ def main(unused_argv):
     model.add_layer('tf.nn', 'l2_normalize', axis=1)
    
     power_parser = AdjacencyPowersParser()
-    layer_dims = map(int, FLAGS.hidden_dims_csv.split(','))
+    layer_dims = list(map(int, FLAGS.hidden_dims_csv.split(',')))
     layer_dims.append(power_parser.output_capacity(dataset.ally.shape[1]))
     for j, dim in enumerate(layer_dims):
       if j != 0:
