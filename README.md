@@ -1,6 +1,6 @@
 # MixHop TensorFlow Implementation
 
-Official Implementation of ICML 2019 Paper: *MixHop: Higher-Order Graph Convolutional Architectures via Sparsified Neighborhood Mixing*
+Official Implementation of ICML 2019 Paper: [*MixHop: Higher-Order Graph Convolutional Architectures via Sparsified Neighborhood Mixing*](https://arxiv.org/abs/1905.00067)
 
 If you find this code useful, please cite us as:
 
@@ -24,7 +24,7 @@ If you find this code useful, please cite us as:
 1. `mixhop_trainer.py`: End-to-end training and evaluation over the
    [planetoid](https://github.com/kimiyoung/planetoid) datasets. You probably
    want to start by invoking/modifying the shell scripts directly
-   (e.g. `planetoid.sh`).
+   (e.g. `train_cora.sh`).
 
 ## How to use `mixhop_trainer.py`
 
@@ -40,8 +40,19 @@ mkdir -p ~/data && cd ~/data && ls planetoid || git clone git@github.com:kimiyou
 Then, we advise you to run the shell script which have good hyper-parameter values:
 
 ```
-bash train_pubmed.sh
+# Cora:
+bash train_cora.sh  # Model in paper
+
+# Citeseer:
+bash train_citeseer.sh  # Model in paper
+
+# Pubmed
+bash train_pubmed_2layer_psum.sh  # Model in paper
+
+# Pubmed fully-connected output layer.
+bash train_pubmed_3layer_fc.sh  # Model not in paper
 ```
+Note: for cora and citeseer, the shell scripts produce results that are a little better than the paper. We discovered these hyper-parameters only recently (after ICML submission ended).
 
 ## Need help?
 
@@ -51,8 +62,8 @@ like to improve the quality of the code and resolve any ambiguities.
 ## To be completed!
 
 This code provides the complete MixHop Graph Conv Layer and Architecture,
-however, it is still missing (1) Cora + Citeseer run scripts and (2) The
-two-phase training. Reason for delay: Our original code is _researchy_ i.e.
+however, it is still missing the Group-lasso regularization.
+Reason for delay: Our original code is _researchy_ i.e.
 not pleasant to read [you know how it goes: you try a bunch of things, until
 something works, without removing the things that did not work, producing one
 huge file].
