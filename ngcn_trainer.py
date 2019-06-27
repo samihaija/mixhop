@@ -22,7 +22,7 @@ flags.DEFINE_string('dataset_dir',
                     os.path.join(os.environ['HOME'], 'data/planetoid/data'),
                     'Directory containing all datasets. We assume the format '
                     'of Planetoid')
-flags.DEFINE_string('results_dir', 'results',
+flags.DEFINE_string('results_dir', 'ngcn_results',
                     'Evaluation results will be written here.')
 flags.DEFINE_string('train_dir', 'trained_models',
                     'Directory where trained models will be written.')
@@ -42,36 +42,24 @@ flags.DEFINE_integer('num_train_nodes', -20,
 flags.DEFINE_integer('num_validate_nodes', 500, '')
 
 # Model Architecture Flags.
-flags.DEFINE_string('architecture', '',
-                    '(Optional) path to model architecture JSON file. '
-                    'If given, none of the architecture flags matter anymore: '
-                    'the contents of the file will entirely specify the '
-                    'architecture. For example, see architectures/pubmed.json')
-flags.DEFINE_string('hidden_dims_csv', '60',
-                    'Comma-separated list of hidden layer sizes.')
+flags.DEFINE_integer('hidden_dim', '30',
+                     'Comma-separated list of hidden layer sizes.')
 flags.DEFINE_string('output_layer', 'wsum',
                     'One of: "wsum" (weighted sum) or "fc" (fully-connected).')
 flags.DEFINE_string('nonlinearity', 'relu', '')
 flags.DEFINE_string('adj_pows', '1',
                     'Comma-separated list of Adjacency powers. Setting to "1" '
                     'recovers valinna GCN. Setting to "0,1,2" uses '
-                    '[A^0, A^1, A^2]. Further, you can feed as '
-                    '"0:20:10,1:10:10", where the syntax is '
-                    '<pow>:<capacity in layer1>:<capacity in layer2>. The '
-                    'number of layers equals number of entries in '
-                    '--hidden_dims_csv, plus one (for the output layer). The '
-                    'capacities do *NOT* have to add-up to the corresponding '
-                    'entry in hidden_dims_csv. They will be re-scaled if '
-                    'necessary.')
+                    '[A^0, A^1, A^2], each in a separate GCN tower, then '
+                    'combines them according to --output_layer')
+flags.DEFINE_integer('replication_factor', 3,
+                     'Each GCN tower will be replicated this many times.')
 
 # Training Flags.
 flags.DEFINE_integer('num_train_steps', 400, 'Number of training steps.')
 flags.DEFINE_integer('early_stop_steps', 50, 'If the validation accuracy does '
                      'not increase for this many steps, training is halted.')
 flags.DEFINE_float('l2reg', 5e-4, 'L2 Regularization on Kernels.')
-flags.DEFINE_float('lasso_reg', 0, 'Group Lasso Regularizer.')
-flags.DEFINE_integer('architecture_search_steps', 0,
-                     'Number of steps with L2 regularizer.')
 
 flags.DEFINE_float('input_dropout', 0.7, 'Dropout applied at input layer')
 flags.DEFINE_float('layer_dropout', 0.9, 'Dropout applied at hidden layers')
@@ -139,87 +127,6 @@ class AccuracyMonitor(object):
     return True
 
 
-# TODO(haija): move to utils.
-class AdjacencyPowersParser(object):
-  
-  def __init__(self):
-    powers = FLAGS.adj_pows.split(',')
-
-    has_colon = None
-    self._powers = []
-    self._ratios = []
-    for i, p in enumerate(powers):
-      if i == 0:
-        has_colon = (':' in p)
-      else:
-        if has_colon != (':' in p):
-          raise ValueError(
-              'Error in flag --adj_pows. Either all powers or non should '
-              'include ":"')
-      #
-      components = p.split(':')
-      self._powers.append(int(components[0]))
-      if has_colon:
-        self._ratios.append(map(float, components[1:]))
-      else:
-        self._ratios.append([1])
-
-  def powers(self):
-    return self._powers
-
-  def output_capacity(self, num_classes):
-    if all([len(s) == 1 and s[0] == 1 for s in self._ratios]):
-      return num_classes * len(self._powers)
-    else:
-      return sum([s[-1] for s in self._ratios])
-
-  def divide_capacity(self, layer_index, total_dim):
-    sizes = [l[min(layer_index, len(l)-1)] for l in self._ratios]
-    sum_units = numpy.sum(sizes)
-    size_per_unit = total_dim / float(sum_units)
-    dims = []
-    for s in sizes[:-1]:
-      dim = int(numpy.round(s * size_per_unit))
-      dims.append(dim)
-    dims.append(total_dim - sum(dims))
-    return dims
-
-
-class ColumnLassoRegularizer(keras_regularizers.Regularizer):
-  """Applies Lasso Regularization on every column of parameter matrices.
-  
-  Two-stage training (Section 4.2).
-  """
-
-  def get_config(self):
-    return {'coef': float(self.coef)}
-
-  def __init__(self, coef=0.):
-    self.coef = coef
-
-  def __call__(self, x):
-    regularization = 0.
-    num_columns = int(x.shape[1])
-    k = keras_regularizers.K
-    for c in range(num_columns):
-      regularization = k.sqrt(k.sum(k.square(x[:, c]))) + regularization
-
-    return regularization * self.coef
-
-
-class CombinedRegularizer(keras_regularizers.Regularizer):
-  
-  def __init__(self, lasso=0., l2=0.):
-    self.lasso = ColumnLassoRegularizer(lasso)
-    self.l2 = keras_regularizers.l2(l2)
-    self.config = {'lasso': lasso, 'l2': l2}
-
-  def get_config(self):
-    return self.config
-
-  def __call__(self, x):
-    return self.lasso(x) + self.l2(x)
-
 
 def main(unused_argv):
   encoded_params = GetEncodedParams()
@@ -241,40 +148,62 @@ def main(unused_argv):
   ph_indices = tf.placeholder(tf.int64, [None])
   is_training = tf.placeholder_with_default(True, [], name='is_training')
 
-  pows_parser = AdjacencyPowersParser()  # Parses flag --adj_pows
   num_x_entries = dataset.x_indices.shape[0]
 
   sparse_adj = dataset.sparse_adj_tensor()
-  kernel_regularizer = CombinedRegularizer(FLAGS.l2reg, FLAGS.l2reg) #  keras_regularizers.l2(FLAGS.l2reg)
+  kernel_regularizer = keras_regularizers.l2(FLAGS.l2reg)
   
   ### BUILD MODEL
-  model = mixhop_model.MixHopModel(
-      sparse_adj, x, is_training, kernel_regularizer)
-  if FLAGS.architecture:
-    model.load_architecture_from_file(FLAGS.architecture)
-  else:
-    model.add_layer('mixhop_model', 'sparse_dropout', FLAGS.input_dropout,
-                    num_x_entries, pass_is_training=True)
-    model.add_layer('tf', 'sparse_tensor_to_dense')
-    model.add_layer('tf.nn', 'l2_normalize', axis=1)
-   
-    power_parser = AdjacencyPowersParser()
-    layer_dims = map(int, FLAGS.hidden_dims_csv.split(','))
-    layer_dims.append(power_parser.output_capacity(dataset.ally.shape[1]))
-    for j, dim in enumerate(layer_dims):
-      if j != 0:
-        model.add_layer('tf.layers', 'dropout', FLAGS.layer_dropout,
-                        pass_training=True)
-      capacities = power_parser.divide_capacity(j, dim)
-      model.add_layer('self', 'mixhop_layer', power_parser.powers(), capacities,
-                      layer_id=j, pass_kernel_regularizer=True)
+  gc_towers = []
+  layer_id = -1
+  for r in range(FLAGS.replication_factor):
+    for p in FLAGS.adj_pows.split(','):
+      p = int(p)
+      model = mixhop_model.MixHopModel(
+          sparse_adj, x, is_training, kernel_regularizer)
+      model.add_layer('mixhop_model', 'sparse_dropout', FLAGS.input_dropout,
+                      num_x_entries, pass_is_training=True)
+      model.add_layer('tf', 'sparse_tensor_to_dense')
+      model.add_layer('tf.nn', 'l2_normalize', axis=1)
+     
+      layer_dims = [FLAGS.hidden_dim, dataset.ally.shape[1]]
+      for j, dim in enumerate(layer_dims):
+        layer_id += 1
+        if j != 0:
+          model.add_layer('tf.layers', 'dropout', FLAGS.layer_dropout,
+                          pass_training=True)
+        model.add_layer('self', 'mixhop_layer', [p], [dim], layer_id=layer_id,
+                        replica=r, pass_kernel_regularizer=True)
 
-      if j != len(layer_dims) - 1:
-        model.add_layer('tf.contrib.layers', 'batch_norm')
-        model.add_layer('tf.nn', FLAGS.nonlinearity)
-    #
-    model.add_layer('mixhop_model', 'psum_output_layer', dataset.ally.shape[1])
-  net = model.activations[-1]
+        if j != len(layer_dims) - 1:
+          model.add_layer('tf.contrib.layers', 'batch_norm')
+          model.add_layer('tf.nn', FLAGS.nonlinearity)
+    # 
+    gc_towers.append(model)
+
+  gcn_outputs = []
+  for tower in gc_towers:
+    tower_logits = tower.activations[-1]
+    sliced_output = tf.gather(tower_logits, ph_indices)
+    tower_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
+        labels=y, logits=sliced_output))
+    tf.losses.add_loss(tower_loss)
+    tower_logits = tf.stop_gradient(tower_logits)
+
+    if FLAGS.output_layer == 'wsum':
+      gcn_outputs.append(tf.nn.softmax(tower_logits))
+    elif FLAGS.output_layer == 'fc':
+      gcn_outputs.append(tf.nn.relu(tower_logits))
+      
+
+  #gcn_outputs = [tf.nn.softmax(model.activations[-1]) for model in gc_towers]
+  net = tf.concat(gcn_outputs, 1)
+
+  if FLAGS.output_layer == 'wsum':
+    net = mixhop_model.psum_output_layer(net, dataset.ally.shape[1])
+  elif FLAGS.output_layer == 'fc':
+    net = tf.layers.dense(net, dataset.ally.shape[1])
+    #print ('ERROR: Not implemented')
 
   ### TRAINING.
   sliced_output = tf.gather(net, ph_indices)

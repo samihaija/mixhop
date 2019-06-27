@@ -24,7 +24,7 @@ def psum_output_layer(x, num_classes):
   tf.losses.add_loss(tf.reduce_mean((sum_q_weights ** 2)) * 1e-3 )
   softmax_q = tf.nn.softmax(sum_q_weights)  # softmax
   psum = 0
-  for i in xrange(num_segments):
+  for i in range(int(num_segments)):
     segment = x[:, i*num_classes : (i+1)*num_classes]
     psum = segment * softmax_q[i] + psum
   return psum
@@ -32,12 +32,12 @@ def psum_output_layer(x, num_classes):
 
 def adj_times_x(adj, x, adj_pow=1):
   """Multiplies (adj^adj_pow)*x."""
-  for i in xrange(adj_pow):
+  for i in range(adj_pow):
     x = tf.sparse_tensor_dense_matmul(adj, x)
   return x
 
 def mixhop_layer(x, sparse_adjacency, adjacency_powers, dim_per_power,
-                 kernel_regularizer=None, layer_id=None):
+                 kernel_regularizer=None, layer_id=None, replica=None):
   """Constructs MixHop layer.
 
   Args:
@@ -49,12 +49,13 @@ def mixhop_layer(x, sparse_adjacency, adjacency_powers, dim_per_power,
     layer_id: If given, will be used to name the layer
   """
   #
+  replica = replica or 0
   layer_id = layer_id or 0
   segments = []
   for p, dim in zip(adjacency_powers, dim_per_power):
     net_p = adj_times_x(sparse_adjacency, x, p)
 
-    with tf.variable_scope('l%i_p%s' % (layer_id, str(p))):
+    with tf.variable_scope('r%i_l%i_p%s' % (replica, layer_id, str(p))):
       layer = tf.layers.Dense(
           dim,
           kernel_regularizer=kernel_regularizer,
@@ -154,9 +155,9 @@ class MixHopModel(object):
         fn(self.activations[-1], *args, **kwargs))
 
   def mixhop_layer(self, x, adjacency_powers, dim_per_power,
-                   kernel_regularizer=None, layer_id=None):
+                   kernel_regularizer=None, layer_id=None, replica=None):
     return mixhop_layer(x, self.sparse_adj, adjacency_powers, dim_per_power,
-                        kernel_regularizer, layer_id)
+                        kernel_regularizer, layer_id, replica)
 
 def example_pubmed_model(
     sparse_adj, x, num_x_entries, is_training, kernel_regularizer, input_dropout,

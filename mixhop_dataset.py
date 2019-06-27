@@ -1,10 +1,11 @@
 import collections
 import os
 import pickle
-import tensorflow as tf
+import sys
 
 import numpy
 import scipy.sparse
+import tensorflow as tf
 
 def concatenate_csr_matrices_by_rows(matrix1, matrix2):
   """Concatenates sparse csr matrices matrix1 above matrix2.
@@ -21,6 +22,13 @@ def concatenate_csr_matrices_by_rows(matrix1, matrix2):
   return scipy.sparse.csr_matrix((new_data, new_indices, new_ind_ptr))
 
 
+def load_x(filename):
+  if sys.version_info > (3, 0):
+    return pickle.load(open(filename, 'rb'), encoding='latin1')
+  else:
+    return numpy.load(filename)
+
+
 def ReadDataset(dataset_dir, dataset_name):
   """Returns dataset files given e.g. ind.pubmed as a dataset_name.
  
@@ -32,9 +40,9 @@ def ReadDataset(dataset_dir, dataset_name):
     Dataset object (defined below).
   """
   base_path = os.path.join(dataset_dir, dataset_name)
-  edge_lists = pickle.load(open(base_path + '.graph'))
+  edge_lists = pickle.load(open(base_path + '.graph', 'rb'))
 
-  allx = numpy.load(base_path + '.allx') #.todense()
+  allx = load_x(base_path + '.allx')
   ally = numpy.array(numpy.load(base_path + '.ally'), dtype='float32')
 
   # TODO(haija): Support Homophily Datasets [and upload them]
@@ -61,10 +69,10 @@ def ReadDataset(dataset_dir, dataset_name):
     test_idx = range(num_train*2, num_train*3)
 
   else:
-    testx = numpy.load(base_path + '.tx') #.todense()
+    testx = load_x(base_path + '.tx')
 
     # Add test
-    test_idx = map(int, open(base_path + '.test.index').read().split('\n')[:-1])
+    test_idx = list(map(int, open(base_path + '.test.index').read().split('\n')[:-1]))
 
     num_test_examples = max(test_idx) - min(test_idx) + 1
     sparse_zeros = scipy.sparse.csr_matrix((num_test_examples, allx.shape[1]),
@@ -88,7 +96,7 @@ def ReadDataset(dataset_dir, dataset_name):
 
   # Will be used to construct (sparse) adjacency matrix.
   edge_sets = collections.defaultdict(set)
-  for node, neighbors in edge_lists.iteritems():
+  for node, neighbors in edge_lists.items():
     edge_sets[node].add(node)   # Add self-connections
     for n in neighbors:
       edge_sets[node].add(n)
@@ -97,7 +105,7 @@ def ReadDataset(dataset_dir, dataset_name):
   # Now, build adjacency list.
   adj_indices = []
   adj_values = []
-  for node, neighbors in edge_sets.iteritems():
+  for node, neighbors in edge_sets.items():
     for n in neighbors:
       adj_indices.append((node, n))
       adj_values.append(1 / (numpy.sqrt(len(neighbors) * len(edge_sets[n]))))
